@@ -1,0 +1,10 @@
+#!/bin/bash
+
+wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u31-b13/jdk-8u31-linux-x64.tar.gz
+tar xzf jdk-8u31-linux-x64.tar.gz
+rm jdk-8u31-linux-x64.tar.gz
+cat >> .bashrc <<EOT
+export JAVA_HOME=$HOME/jdk1.8.0_31
+export PATH=$HOME/jdk1.8.0_31/bin:\$PATH:
+EOT
+
