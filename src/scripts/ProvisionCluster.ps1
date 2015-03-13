@@ -43,7 +43,10 @@ param(
     ## Instance Image
     $instanceImage = "5112500ae3b842c8b9c604889f8753c3__OpenLogic-CentOS-65-20140606",
 
-    [ValidateSet("A0","A1","A2","A3","A4","A5","A6","A7","A8","A9")]
+    [ValidateSet("A5","A6","A7","A8","A9","A10","A11",
+                 "Standard_D1","Standard_D2","Standard_D3","Standard_D4","Standard_D11","Standard_D12","Standard_D13","Standard_D14",
+                 "Standard_DS1","Standard_DS2","Standard_DS3","Standard_DS4","Standard_DS11","Standard_DS12","Standard_DS13","Standard_DS14",
+                 "Standard_G1","Standard_G2","Standard_G3","Standard_G4","Standard_G5")]
     [string]
     ## Instance Size
     $instanceSize = "A7",
@@ -66,7 +69,11 @@ param(
 
     [string]
     ## Azure service names are global, use unique prefix for cloud services and storage accounts
-    $uniquePrefix = "datastax"
+    $uniquePrefix = "datastax",
+
+    [ValidateSet("Standard_LRS","Standard_ZRS","Standard_GRS","Standard_RAGRS","Premium_LRS")]
+    [string]
+    $storageAccountType = "Standard_GRS"
 )
 ## End of config
 
@@ -76,13 +83,13 @@ function ProvisionCassandraCluster()
     ## 1 storage account for each 2 instances. 2 instances can use 80-90% of IOPS limit of single storage account.
     for($i=1; $i -le ((($nodes * $cloudServices) + 1) / 2); $i++)
     {
-        New-AzureStorageAccount -StorageAccountName "$($uniquePrefix)perftest$i" -Label "DataStax" -AffinityGroup $affinityGroup
+        New-AzureStorageAccount -StorageAccountName "$($uniquePrefix)$i" -Label "DataStax" -AffinityGroup $affinityGroup -Type $storageAccountType
     }
 
     ## Add Cassandra CloudService and VMs
     for($cs=1; $cs -le $cloudServices; $cs++)
     {
-        $csName = "$($uniquePrefix)-perftest$cs"
+        $csName = "$($uniquePrefix)-CS$cs"
         New-AzureService -ServiceName $csName -AffinityGroup $affinityGroup
 
         ## Add Certificate to the store on the cloud service (.cer or .pfx with -Password)
@@ -98,7 +105,7 @@ function ProvisionCassandraCluster()
             $sshPort = 10000 + $instanceNumber
      
             ## 2 nodes per storage account
-            $storageContainer = "https://$($uniquePrefix)perftest$([math]::Ceiling($instanceNumber/2)).blob.core.windows.net/node$instanceNumber"
+            $storageContainer = "https://$($uniquePrefix)$([math]::Ceiling($instanceNumber/2)).blob.core.windows.net/node$instanceNumber"
      
             ## Create new VM
             New-AzureVMConfig -Name "$csName-$instanceNumber" -ImageName $instanceImage -InstanceSize $instanceSize | `
