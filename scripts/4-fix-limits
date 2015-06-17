@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo cassandra - memlock unlimited | sudo tee -a /etc/security/limits.conf
+echo cassandra - nofile 100000 | sudo tee -a /etc/security/limits.conf
+echo cassandra - nproc 32768 | sudo tee -a /etc/security/limits.conf
+echo cassandra - as unlimited | sudo tee -a /etc/security/limits.conf
+

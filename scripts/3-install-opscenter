@@ -1,0 +1,8 @@
+#!/bin/bash
+
+echo "deb http://debian.datastax.com/community stable main" | sudo tee -a /etc/apt/sources.list.d/datastax.community.list
+curl -L http://debian.datastax.com/debian/repo_key | sudo apt-key add -
+sudo apt-get update -y
+sudo apt-get install opscenter -y
+sudo service opscenterd start
+

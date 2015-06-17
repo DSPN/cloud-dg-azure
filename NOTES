@@ -1,0 +1,151 @@
+exit 1 # Make sure we do not accidentally run this
+
+
+
+                             # Prepare environment
+
+export clustername=try-cloud-certification-instructions
+export remote_user=pierre_laporte
+
+
+
+                                # Create cluster
+
+# Windows Virtualbox VM specific
+net use x: \\vboxsvr\cloud-dg-azure
+
+# Setup Azure cmdlets in Azure Powershell console
+Get-AzurePublishSettingsFile
+Import-AzurePublishSettingsFile <mysettings>.publishsettings
+
+# Create a new storage account on Azure portal with pricing tier "Premium Locally Redundant" and import it
+Set-AzureSubscription -SubscriptionName "Pay-As-You-Go(Converted to EA)" –CurrentStorageAccount plaportepremiumstorage
+Get-AzureSubscription
+
+# Create a new Affinity Group
+New-AzureAffinityGroup -Name plaportepremiumstorage-AG -Label "Pierre Laporte Premium Storage Test" -Location "West Europe"
+
+# Install azure xplat-cli and import the settings file
+azure account import <mysettings>.publishsettings
+
+# Create VNET
+azure network vnet create --affinity-group plaportepremiumstorage-AG --address-space 10.1.0.0 --cidr 16 plaportepremiumstorage-VNet
+
+# ON OSX/Linux, create the certificates/key that will be used
+openssl genrsa -out private-key.pem 2048
+ssh-keygen -y -f private-key.pem > public-key.pub
+openssl req -new -x509 -key private-key.pem -out cacert.pem -days 3650
+openssl x509 -inform PEM -in cacert.pem -outform DER -out certificate.cer
+openssl x509 -fingerprint -in cacert.pem -noout | cut -d= -f2 | tr -d : > certificate.fingerprint
+
+# Create instances
+.\src\scripts\ProvisionCluster.ps1 -clusterType cassandra -affinityGroup plaportepremiumstorage-AG -vnetName plaportepremiumstorage-VNet -nodes 3 -instanceImage "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_1-LTS-amd64-server-20150123-en-us-30GB" -uniquePrefix "plaportepremiumstorage" -storageAccountType Premium_LRS -certPath ".\certificate.cer" -certFP C8AAD0086FDB84D9C054D1547A1EA843086E9869 -instanceSize Standard_DS13
+
+# ON OSX, If passwordless login does not work, upload public key manually
+for p in 1000{1,2,3}
+do
+  ssh -p $p datastax@191.233.89.164 "echo '`cat ~/.ssh/id_rsa.pub`' >> ~/.ssh/authorized_keys"
+done
+
+# Running the setup_sudoers script is not necessary as the user is member of sudo group
+
+
+# Rightscale and PLA specific
+echo $clustername > clustername
+ctool launch $clustername 10 &
+ctool-pssh-hosts-file $clustername > hosts
+ctool-ssh-config $clustername > ssh-config
+ssh-merge-config ssh-config
+
+
+
+                              # Create hosts files
+
+# Create a "hosts.dse" file that contains DSE machines
+# Create a "hosts.stress" file that contains Stress machines
+# Create a "hosts.opscenter" file that contains OpsCenter machines
+
+
+
+                                # Upload scripts
+
+pscp -h hosts --recursive scripts/ "/home/$remote_user/"
+
+
+
+                                  # Checkpoint 
+                     # clustername, hosts and ssh-config OK
+
+
+
+                            # Create common SSH key
+
+ssh-keygen -t rsa -qf key.$clustername -N ''
+pssh -h hosts "mkdir -p .ssh/"
+pscp -h hosts key.$clustername "/home/$remote_user/.ssh/id_rsa"
+pscp -h hosts key.$clustername.pub "/home/$remote_user/.ssh/id_rsa.pub"
+pssh -h hosts 'sudo chmod go-wrx .ssh/id_rsa*'
+pssh -h hosts "cat .ssh/id_rsa.pub >> .ssh/authorized_keys"
+# Make sure certificates are accepted between nodes, either by disabling StrictHostKeyChecking for local addresses or by running this command on all nodes
+# Rightscale specific
+for n in `seq 0 9`; do   ssh -oStrictHostKeyChecking=no node$n uptime; done
+
+
+
+                               # On ALL machines
+                                 # Install Java
+
+pssh -h hosts 'bash scripts/2-install-java'
+
+
+
+                    # Install opscenter on one machine (#9)
+
+pssh -h hosts.opscenter 'bash scripts/3-install-opscenter'
+
+
+
+                               # On DSE machines
+                   # Mount a 1TB data partition on /mnt/data
+              # Mount a 80GB commitlog partition on /mnt/commitlog
+
+# Rightscale+gce+ctool specific
+sudo mkfs.ext3 /dev/sda2
+sudo mount /dev/sda2 /mnt
+sudo mkdir /mnt/{data,commitlog}
+sudo chmod 777 /mnt/{data,commitlog}
+
+# Check that partitions are correctly setup
+pssh --inline-stdout -h hosts.dse 'lsblk'
+
+
+                               # On DSE machines
+                         # Install DSE using OpsCenter
+
+# Download DSE installation package from Datastax website and run the installer in CLI
+# Add the seeds in Opscenter and connect to the cluster
+
+
+
+                               # On DSE machines
+                              # Fix system limits
+
+pssh -h hosts.dse 'bash scripts/4-fix-limits'
+
+
+
+                               # On all machines
+                          # Make sure swap is disabled
+
+pssh -h hosts 'free -m | tail -1 | grep "Swap:            0          0          0"'
+
+
+
+                              # On stress machines
+                                # Install Stress
+ 
+# Check https://github.com/DSPN/eval-kit/
+# Warning :
+# - Coupling on OSX (brew commands)
+# - Use of Russel's repository and specific commit "CASSANDRA-7821-TRUNK" to build Stress
+
