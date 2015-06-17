@@ -1,0 +1,8 @@
+#!/bin/bash
+
+ssh-keygen -t rsa -qf key.$clustername -N ''
+pssh -h hosts "mkdir -p /home/pierre_laporte/.ssh/"
+pscp -h hosts key.$clustername "/home/pierre_laporte/.ssh/id_rsa"
+pscp -h hosts key.$clustername.pub "/home/pierre_laporte/.ssh/id_rsa.pub"
+pssh -h hosts "cat .ssh/id_rsa.pub >> .ssh/authorized_keys"
+

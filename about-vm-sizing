@@ -1,0 +1,33 @@
+A7 are recommended for DSE (see Datastax Academy):
+
+A7
+    8 cores
+    56 GB RAM
+    605 GB disque éphémère
+    16x500 IOPS par disque distant
+
+Matt recommends G1, G2 or G3 depending on applications
+G1
+    2 cores
+    28 GB RAM
+    384 GB SSD local
+    4x500 IOPS par disque distant
+G2
+    4 cores
+    56 GB RAM
+    768 GB SSD local
+    8x500 IOPS par disque distant
+G3
+    8 cores
+    112 GB RAM
+    1,5 TB SSD local
+    16x500 IOPS par disque distant
+
+TODO : compare G2 and DS13 with Premium Storage
+
+DS13
+    8 cores
+    56 GB RAM
+    112 GB local SSD
+    25,600 IOPS, 256MB/s
+

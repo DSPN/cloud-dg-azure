@@ -1,0 +1,15 @@
+Host plaporte-premium-storage-*
+    User datastax
+    Hostname plaportepremiumstorage-cs1.cloudapp.net
+    IdentityFile /Users/plaporte/env/home/datastax/cloud-provider-certification/cloud-dg-azure/public-key.pub
+    StrictHostKeyChecking no
+
+Host plaporte-premium-storage-1
+    Port 10001
+
+Host plaporte-premium-storage-2
+    Port 10002
+
+Host plaporte-premium-storage-3
+    Port 10003
+
